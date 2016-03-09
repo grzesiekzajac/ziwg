@@ -1,0 +1,3 @@
+# Zastosowanie informatyki w medycynie
+
+to be continued...
