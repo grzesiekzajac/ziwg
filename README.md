@@ -1,3 +1,3 @@
-# Zastosowanie informatyki w medycynie
+# Zastosowanie informatyki w gospodarce
 
 to be continued...

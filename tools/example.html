@@ -1,0 +1,79 @@
+<html>
+<head>
+<title>ZIWG Tools - Example #1</title>
+<style>
+* {
+ color: #FFFFFF;
+ background-color: #000000;
+}
+
+#glCanvas {
+ background-color: #FFFFFF;
+ border: none;
+ top: 50%;
+ left: 50%;
+ position: fixed;
+ transform: translate(-50%,-50%);
+}
+</style>
+<script src="tools.js" type="text/javascript"></script>
+<script type="text/javascript">
+var matrix = null, array = null;
+var ctx;
+
+function onProcess() {
+ if(!matrix || !array)
+  return;
+
+ ctx.fillText("Wczytano dane!",20,50);
+ ctx.fillText("Rozmiar macierzy wynosi "+matrix.length+"x"+matrix.length+".",20,80);
+ ctx.fillText("Ilosc elementow w liscie wynosi "+array.length+".",20,100);
+
+ ctx.fillText("Element macierzy na pozycji [0,0]: "+matrix[0][0],20,130);
+
+ ctx.fillText("Pierwsze 10 elementow:",20,160);
+ for(var i = 0; i<array.length; i++) {
+  if(i == 9)
+   break;
+
+  ctx.fillText(" -> "+array[i],20,180+(i*20));
+ }
+}
+
+function onLoad() {
+ ctx = document.getElementById("glCanvas").getContext("2d");
+
+ ctx.fillStyle = "#000000";
+ ctx.font = "12px Arial";
+ ctx.fillText("Wczytywanie danych...",20,30);
+
+ var matrixRequest = new XMLHttpRequest();
+ matrixRequest.onreadystatechange = function() {
+  if((this.readyState == 4) && (this.status != 404)) {
+   matrix = loadMatrix(this.responseText);
+   onProcess();
+  }
+ }
+
+ matrixRequest.open('GET',"matrix.txt",true);
+ matrixRequest.send();
+
+ var pickleRequest = new XMLHttpRequest();
+ pickleRequest.onreadystatechange = function() {
+  if((this.readyState == 4) && (this.status != 404)) {
+   var data = new Uint8Array(this.response);
+   array = loadPickle(data);
+   onProcess();
+  }
+ }
+
+ pickleRequest.open('GET',"rowlabels.pkl",true);
+ pickleRequest.responseType = 'arraybuffer';
+ pickleRequest.send();
+}
+</script>
+</head>
+<body onload="onLoad();">
+<canvas id="glCanvas" width="640" height="480"></canvas>
+</body>
+</html>
