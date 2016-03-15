@@ -6,81 +6,105 @@
 /*
  Function:	loadPickle
  Arguments:	Uint8Array
- Returns:		Array<String>
+ Returns:	Array<String>
  
  Comment:
 	Only pickles exported from Python 2 and 3 which contains list of strings are supported.
 */
 
 function loadPickle(/*Uint8Array*/ pkl) {
- var i = 0;
- var array = [];
+ var
+	MARK = 0x28,
+	BINPUT = 0x71,			// 1B argument
+	EMPTY_LIST = 0x5D,		// EMPTY_LIST
+	SHORT_BINSTRING = 0x55,	// Size less than 256 bytes
+	LONG_BINSTRING = 0x58,	// Size larger than 256 bytes
+	APPENDS = 0x65,
+	REDUCE = 0x72,
+	PROTO = 0x80;			// Protocol version
+
+ var array = null;
 
  try {
-  if(pkl.length<3)
-   throw "File size too small.";
+  var index, indexmul = 0, length, val;
 
-  if(pkl[i++] != 0x80)
-   throw "Not a pickle!";
+  for(var i = 0; i<pkl.length; i++) {
+   var pos = i, opcode = pkl[i];
 
-  pkl[i++]; // python version?
-
-  if(pkl[i++] != 0x5D)
-   throw "Unsupported type of data.";
-
-  var first = true;
-
-  while(i<pkl.length) {
-   if(pkl[i++] != 0x71)
-    throw "Unknown identifier found, pickle unsupported.";
-
-   var id = pkl[i++];
-   if(first) {
-    if(pkl[i++] != 0x28)
-     throw "Unknown pickle format.";
-
-    first = false;
-   }
-
-   var code = pkl[i++];
-
-   switch(code) {
-    case 0x55: // String
-    case 0x58: {
-     var len = 0;
-
-     if(code == 0x58)
-      len = ((pkl[i++]) | (pkl[i++] << 8) | (pkl[i++] << 16) | (pkl[i++] << 24));
-     else
-      len = pkl[i++];
-
-     var tmp = [];
-     for(var j = 0; j<len; j++)
-      tmp[j] = String.fromCharCode(pkl[i++]);
-
-     array[id] = tmp.join('');
+   switch(opcode) {
+    case BINPUT: {
+     index = pkl[++i];
 
      break;
     }
 
-    case 0x65: { // EOF
-     if(pkl[i++] != 0x2E)
-      throw "Unknown ending of list in pickle.";
-    
+    case SHORT_BINSTRING:
+    case LONG_BINSTRING: {
+     var indexCalc = index+(256*indexmul);
+
+     if(opcode == SHORT_BINSTRING) {
+      length = pkl[++i];
+     } else {
+      var a = pkl[++i];
+      var b = pkl[++i];
+      var c = pkl[++i];
+      var d = pkl[++i];
+      length = ((a) | (b << 8) | (c << 16) | (d << 24));
+     }
+
+     var tmp = [];
+     for(var j = 0; j<length; j++)
+      tmp[j] = String.fromCharCode(pkl[++i]);
+
+     array[indexCalc] = tmp.join('');
+
+     break;
+    }
+
+    case MARK: {
+     break;
+    }
+
+    case REDUCE: {
+     // Very ugly workaround...
+
+     index = pkl[++i];
+     var a = pkl[++i];
+     var b = pkl[++i];
+     var c = pkl[++i];
+     indexmul = ((a) | (b << 8) | (c << 16));
+
+     break;
+    }
+
+    case APPENDS: {
+     if(pkl[i+1] == 0x2e)
+      i++;
+
+     break;
+    }
+
+    case EMPTY_LIST: {
+     array = [];
+     break;
+    }
+
+    case PROTO: {
+     var protocol = pkl[++i];
+     if(protocol > 3)
+      throw "Unsupported pickle protocol version "+protocol+".";
+ 
      break;
     }
 
     default: {
-     throw "Unknown identifier in pickle.";
-     break;
+     throw "Unknown opcode at position 0x"+pos.toString(16)+" dec = "+opcode+", hex = "+opcode.toString(16)+", char = \'"+String.fromCharCode(opcode)+"\'.";
     }
    }
   }
- }
- 
- catch(e) {
+ } catch(e) {
   alert(e);
-  return null;
+  array = null;
  }
 
  return array;
@@ -89,7 +113,7 @@ function loadPickle(/*Uint8Array*/ pkl) {
 /*
  Function:	loadMatrix
  Arguments:	String
- Returns:		Array<Float,Float>
+ Returns:	Array<Float,Float>
  
  Comment:
 	N/A
