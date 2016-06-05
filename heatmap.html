@@ -191,16 +191,13 @@ var matrix = [], nodes = data.nodes, n = nodes.length;
 					})
 					.attr("width", cellSize)
 					.attr("height", cellSize)
-					.style("fill-opacity", function(d) {
-						return z(d.z);
-					})
 					.style(
 							"fill",
 							function(d) {
-								return nodes[d.x].group == nodes[d.y].group ? c(nodes[d.x].group)
-										: null;
-							}).on("mouseover", mouseover).on(
-							"mouseout", mouseout)
+								return generateColorCode(d.z);
+							})
+					.on("mouseover", mouseover)
+					.on("mouseout", mouseout)
 					.on('mouseover', tip.show)
       		.on('mouseout', tip.hide);
 		}
@@ -249,6 +246,23 @@ var matrix = [], nodes = data.nodes, n = nodes.length;
 			d3.select("#order").property("selectedIndex", 2)
 					.node().focus();
 		}, 1000);
+
+		function generateColorCode(newValue) {
+		  var r, g, b;
+
+		  if (newValue < 0.5){
+		    r = parseInt(2 *255 * newValue);
+		    g = 255;
+		  }
+		  else {
+		    r = 255;
+		    g = parseInt(2 *255 * (1 - newValue));
+		  }
+
+		  b = 0;
+
+		  return "rgb("+r+","+g+","+b+")";
+		}
 
 		// function minMax(arr){
 		// 	var min = 999999;
