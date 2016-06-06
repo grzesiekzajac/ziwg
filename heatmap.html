@@ -54,8 +54,7 @@ text.active {
 		Order:
 		<select id="order">
 			<option value="name">by Name</option>
-			<option value="count">by Frequency</option>
-			<option value="group">by Cluster</option>
+			<option value="group">by Group</option>
 		</select>
 </aside>
 
@@ -124,9 +123,6 @@ var matrix = [], nodes = data.nodes, n = nodes.length;
 						return d3.ascending(nodes[a].name,
 								nodes[b].name);
 					}),
-			count : d3.range(n).sort(function(a, b) {
-				return nodes[b].count - nodes[a].count;
-			}),
 			group : d3.range(n).sort(function(a, b) {
 				return nodes[b].group - nodes[a].group;
 			})
