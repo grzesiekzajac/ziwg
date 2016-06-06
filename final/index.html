@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<style>
+
+.node {
+  font: 300 13px "Helvetica Neue", Verdana, Arial, sans-serif;
+  fill: #bbb;
+}
+
+.link {
+  fill: none;
+  pointer-events: none;
+}
+
+.node:hover,
+.node--source,
+.node--target {
+  font-weight: 700;
+}
+
+</style>
+
+<body>
+<body onload="onLoad();">
+<input id="tension_slider" style="position:relative;top:3px;" type="range" min="0" max="100" value="45">
+
+<script src="http://d3js.org/d3.v3.min.js" charset="utf-8"></script>
+<script src="tools.js" type="text/javascript"></script>
+<script>
+
+function onLoad() {
+  hierarchySeparator = "_";
+  matrix = null, array = null;
+  books = [], weights = [];
+
+  var matrixRequest = new XMLHttpRequest();
+   matrixRequest.onreadystatechange = function() {
+    if((this.readyState == 4) && (this.status != 404)) {
+     matrix = loadMatrix(this.responseText);
+     onProcess();
+    }
+   }
+
+   matrixRequest.open('GET',"matrix.txt",true);
+   matrixRequest.send();
+
+   var pickleRequest = new XMLHttpRequest();
+   pickleRequest.onreadystatechange = function() {
+    if((this.readyState == 4) && (this.status != 404)) {
+     var data = new Uint8Array(this.response);
+     array = loadPickle(data);
+     onProcess();
+    }
+   }
+
+   pickleRequest.open('GET',"rowlabels.pkl",true);
+   pickleRequest.responseType = 'arraybuffer';
+   pickleRequest.send();   
+}
+
+function onProcess() {
+  if(!matrix || !array)
+    return;
+
+  //generate weights
+  for(var i = 0; i<array.length; i++) {
+    for(var j = i+1; j<array.length; j++) {
+      if(matrix[i][j] > 0){
+        var connection = {src: array[i], dst: array[j], weight: matrix[i][j]};
+        weights.push(connection);
+      }
+    }
+  }
+
+  //generate hierarchy
+  for(var i = 0; i<array.length; i++) {
+    var relation = {name: array[i], connections: []};
+    for(var j = i+1; j<array.length; j++) {
+      if(matrix[i][j] > 0)
+        relation.connections.push(array[j])  
+    }
+    books.push(relation);
+  }
+
+  render();
+}
+
+
+
+
+function render(){
+  var diameter = 1000;
+  var tension = 0.45;
+
+  var radius = diameter / 2,
+      innerRadius = radius - 280;
+
+  var cluster = d3.layout.cluster()
+    .size([360, innerRadius])
+    .sort(null)
+    .value(function(d) { return d.size; });
+
+  var bundle = d3.layout.bundle();
+
+  var line = d3.svg.line.radial()
+      .interpolate("bundle")
+      .tension(tension)
+      .radius(function(d) { return d.y; })
+      .angle(function(d) { return d.x / 180 * Math.PI; });
+
+  var svg = d3.select("body").append("svg")
+      .attr("width", diameter)
+      .attr("height", diameter)
+      .append("g")
+      .attr("transform", "translate(" + radius + "," + radius + ")");
+
+  var link = svg.append("g").selectAll(".link"),
+      node = svg.append("g").selectAll(".node");
+
+  var nodes = cluster.nodes(booksHierarchy(books)),
+      links = booksConnections(nodes);
+
+  link = link
+      .data(bundle(links))
+      .enter().append("path")
+      .each(function(d) { d.source = d[0], d.target = d[d.length - 1]; })
+      .attr("class", "link")
+      .attr("d", line)
+      .attr("stroke-width", 0.3)
+      .style("stroke", "purple");
+
+  node = node
+      .data(nodes.filter(function(n) { return !n.children; }))
+      .enter()
+      .append("text")
+      .attr("class", "node")
+      .attr("dy", ".31em")
+      .attr("transform", function(d) { return "rotate(" + (d.x - 90) + ")translate(" + (d.y + 8) + ",0)" + (d.x < 180 ? "" : "rotate(180)"); })
+      .style("text-anchor", function(d) { return d.x < 180 ? "start" : "end"; })
+      .text(function(d) { return createLabel(d.fullKey); })
+      .on("mouseover", mouseovered)
+      .on("mouseout", mouseouted);
+
+  function createLabel(fullKey){
+    var pre = fullKey; 
+    var spa = pre;//.replace("-", " ");
+    var cut = spa.substring(0, i = pre.lastIndexOf("."));
+    var rep = cut.replace("_", " - ");
+    var up =  rep.replace(/\w\S*/g, function(txt){return txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase();});
+    return up;
+  }
+
+  function getWeight(src, dst) {
+    var weight;    
+      weights.forEach(function(d) {
+        if ((d.src == src && d.dst == dst) || (d.dst == src && d.src == dst)) weight = d.weight;
+      });
+    return weight;
+  }    
+
+  function mouseovered(d) {
+    node
+        .each(function(n) { n.target = n.source = false; });
+
+    link
+        .filter(function(l) { return l.target !== d && l.source !== d; })
+        .style("stroke",  "grey")
+        .attr("stroke-width", 0.05);
+
+    link
+        .classed("link--target", function(l) { if (l.target === d) return l.source.source = true; })
+        .classed("link--source", function(l) { if (l.source === d) return l.target.target = true; })
+        .filter(function(l) { return l.target === d || l.source === d; })
+        .style("stroke",  function(l) { return generateColorCode(getWeight(l.source.fullKey, l.target.fullKey));})
+        .attr("stroke-width", function(l) { return 1+10*getWeight(l.source.fullKey, l.target.fullKey)/2;})
+        .each(function() { this.parentNode.appendChild(this); });
+
+    node
+        .filter(function(n) { return n.source || n.target; })
+        .style("fill",  function(n) { return "black";})
+        .classed("node--target", function(n) { return n.target; })
+        .classed("node--source", function(n) { return n.source; });
+  }
+
+  function mouseouted(d) {
+    link
+        .classed("link--target", false)
+        .classed("link--source", false)
+        .attr("stroke-width", 0.3)
+        .style("stroke", "purple");
+
+    node
+        .classed("node--target", false)
+        .classed("node--source", false)
+        .style("fill", "gray");
+  }
+
+  d3.select(self.frameElement).style("height", diameter + "px");
+
+
+  d3.select("input[id=tension_slider]").on("change", function() {
+    line.tension(this.value / 100);
+    link.attr("d", line);
+  });
+
+  //d3.select("input[id=radius_slider]").on("change", function() {});
+
+}
+
+function booksHierarchy(books) {
+  var obj = {};
+
+  function find(name, data) {
+    var node = obj[name], i;
+    if (!node) {
+      node = obj[name] = data || {name: name, children: []};
+      if (name.length) {
+        node.parent = find(name.substring(0, i = name.lastIndexOf(hierarchySeparator)));
+        node.parent.children.push(node);
+        node.key = name.substring(i + hierarchySeparator.length);
+        node.fullKey = name
+      }
+    }
+    return node;
+  }
+
+  books.forEach(function(d) {
+    find(d.name, d);
+  }); 
+
+  return obj[""];
+}
+
+function booksConnections(nodes) {
+  var tab = {},
+      cons = [];
+
+  nodes.forEach(function(d) {
+    tab[d.name] = d;
+  });
+
+  nodes.forEach(function(d) {
+    if (d.connections) d.connections.forEach(function(i) {
+      cons.push({source: tab[d.name], target: tab[i]});
+    });
+  });
+
+  return cons;
+}
+
+function generateColorCode(weight) {
+  var r, g, b;
+  
+  if (weight < 0.5){ 
+    r = parseInt(2 *255 * weight);
+    g = 255;
+  }
+  else { 
+    r = 255;
+    g = parseInt(2 *255 * (1 - weight));
+  }
+  
+  b = 0;
+  
+  return "rgb("+r+","+g+","+b+")";
+}
+
+</script>
