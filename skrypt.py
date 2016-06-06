@@ -11,7 +11,6 @@ for name in names:
         'group': str(3)
     }
     names_out.append(tmp_hsh)
-# print names_out
 
 array = []
 line_num=0
@@ -33,8 +32,6 @@ for line in content[1:]:
 
 out = {'nodes': names_out, 'links': array}
 json_hsh = json.dumps(out)
-# print json_hsh
 
 with open('result.txt', 'w') as outfile:
     outfile.write(json_hsh)
-print 'FINISHED'

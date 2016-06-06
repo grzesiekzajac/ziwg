@@ -256,43 +256,14 @@ var matrix = [], nodes = data.nodes, n = nodes.length;
 		  }
 		  else {
 		    r = 255;
-		    g = parseInt(2 *255 * (1 - newValue));
+		    g = parseInt(50 *255 * (1 - newValue));
 		  }
 
-		  b = 0;
+		  b = r == 255? 0 : parseInt(255 * (newValue));;
 
 		  return "rgb("+r+","+g+","+b+")";
 		}
 
-		// function minMax(arr){
-		// 	var min = 999999;
-		// 	var max = 0;
-		// 	for (var i = 0; i < arr.length; i++) {
-		// 		for (var j = 0; j < arr[i].length; j++) {
-		// 			if(arr[i][j].z < min){
-		// 				min = arr[i][j].z;
-		// 			} else if (arr[i][j].z > max) {
-		// 				max = arr[i][j].z;
-		// 			}
-		// 		}
-		// 	}
-		// 	return [min, max]
-		// }
-		//
-		// function scaleArray(arr) {
-		// 	var min_max_arr = minMax(arr)
-		// 	for (var i = 0; i < arr.length; i++) {
-		// 		for (var j = 0; j < arr[i].length; j++) {
-		// 			arr[i][j].z = (arr[i][j].z - min_max_arr[0]) / (min_max_arr[1] - min_max_arr[0])
-		// 		}
-		// 	}
-		// 	return arr
-		// }
-		//
-		// function repaint() {
-		// 	d3.selectAll('.cell')
-		//
-		// }
 </script>
 
 </body>
