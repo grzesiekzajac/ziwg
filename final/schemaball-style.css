@@ -1,0 +1,15 @@
+.node {
+  font: 300 13px "Helvetica Neue", Verdana, Arial, sans-serif;
+  fill: #bbb;
+}
+
+.link {
+  fill: none;
+  pointer-events: none;
+}
+
+.node:hover,
+.node--source,
+.node--target {
+  font-weight: 700;
+}
